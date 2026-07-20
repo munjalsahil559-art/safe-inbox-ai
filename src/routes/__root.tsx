@@ -89,6 +89,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: DESC },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "SafeInbox — AI Spam & Phishing Detection" },
+      { name: "description", content: "SafeInbox is an AI-powered application that detects spam in SMS and emails, providing risk levels and security advice." },
+      { property: "og:description", content: "SafeInbox is an AI-powered application that detects spam in SMS and emails, providing risk levels and security advice." },
+      { name: "twitter:description", content: "SafeInbox is an AI-powered application that detects spam in SMS and emails, providing risk levels and security advice." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a64b45d-baad-455b-9ecb-82a9e484f23c/id-preview-ea5458ce--2e417303-db43-4843-b770-6332ffc0a182.lovable.app-1784519532651.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4a64b45d-baad-455b-9ecb-82a9e484f23c/id-preview-ea5458ce--2e417303-db43-4843-b770-6332ffc0a182.lovable.app-1784519532651.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
