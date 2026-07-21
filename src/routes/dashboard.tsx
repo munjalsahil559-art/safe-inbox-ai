@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { loadHistory, type HistoryEntry } from "@/lib/scan-history";
+import { useMemo } from "react";
+import { useScanHistory } from "@/lib/scan-history";
 import { motion } from "framer-motion";
 import {
   BarChart,
