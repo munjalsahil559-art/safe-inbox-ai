@@ -58,7 +58,7 @@ function DetectPage() {
     try {
       const r = await detect({ data: { text: text.trim(), kind } });
       setResult(r);
-      saveHistoryEntry(r);
+      void saveHistoryEntry(r).catch((err) => console.error(err));
       toast[r.prediction === "Spam" ? "error" : "success"](
         r.prediction === "Spam" ? `Spam detected (${r.risk_level})` : "Message looks safe",
       );

@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   clearHistory,
   deleteHistoryEntry,
-  loadHistory,
+  useScanHistory,
   type HistoryEntry,
 } from "@/lib/scan-history";
-import { Search, Trash2, Download, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Search, Trash2, Download, ShieldAlert, ShieldCheck, Cloud, HardDrive } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/history")({
@@ -46,16 +46,9 @@ function toCsv(items: HistoryEntry[]): string {
 }
 
 function HistoryPage() {
-  const [items, setItems] = useState<HistoryEntry[]>([]);
+  const { items, signedIn } = useScanHistory();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "spam" | "safe">("all");
-
-  useEffect(() => {
-    const sync = () => setItems(loadHistory());
-    sync();
-    window.addEventListener("safeinbox:history", sync);
-    return () => window.removeEventListener("safeinbox:history", sync);
-  }, []);
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
@@ -83,8 +76,17 @@ function HistoryPage() {
       <div className="mb-8 flex items-end justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight">History</h1>
-          <p className="mt-2 text-muted-foreground">
-            {items.length} scan{items.length === 1 ? "" : "s"} stored locally.
+          <p className="mt-2 text-muted-foreground inline-flex items-center gap-2">
+            {items.length} scan{items.length === 1 ? "" : "s"} ·
+            {signedIn ? (
+              <span className="inline-flex items-center gap-1 text-primary">
+                <Cloud className="h-3.5 w-3.5" /> synced to cloud
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <HardDrive className="h-3.5 w-3.5" /> local only
+              </span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { loadHistory, type HistoryEntry } from "@/lib/scan-history";
+import { useMemo } from "react";
+import { useScanHistory } from "@/lib/scan-history";
 import { motion } from "framer-motion";
 import {
   BarChart,
@@ -25,20 +25,6 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
 });
 
-function useHistory() {
-  const [items, setItems] = useState<HistoryEntry[]>([]);
-  useEffect(() => {
-    const sync = () => setItems(loadHistory());
-    sync();
-    window.addEventListener("safeinbox:history", sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener("safeinbox:history", sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-  return items;
-}
 
 function Stat({
   icon: Icon,
@@ -82,7 +68,7 @@ function Stat({
 }
 
 function DashboardPage() {
-  const items = useHistory();
+  const { items } = useScanHistory();
 
   const stats = useMemo(() => {
     const total = items.length;
