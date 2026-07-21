@@ -68,7 +68,7 @@ function Stat({
 }
 
 function DashboardPage() {
-  const items = useHistory();
+  const { items } = useScanHistory();
 
   const stats = useMemo(() => {
     const total = items.length;
