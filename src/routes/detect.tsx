@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { detectMessage, type DetectionResult } from "@/lib/detect.functions";
 import { ResultCard } from "@/components/safeinbox/result-card";
 import { saveHistoryEntry } from "@/lib/scan-history";
+import { QrScanner, type QrScanResult } from "@/components/safeinbox/qr-scanner";
+
 
 export const Route = createFileRoute("/detect")({
   head: () => ({
@@ -47,16 +49,27 @@ function DetectPage() {
   const [kind, setKind] = useState<"sms" | "email">("sms");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DetectionResult | null>(null);
+  const [qrs, setQrs] = useState<QrScanResult[]>([]);
   const navigate = useNavigate();
 
+
   async function analyze() {
-    if (!text.trim()) {
-      toast.error("Paste a message to analyze.");
+    const trimmed = text.trim();
+    if (!trimmed && qrs.length === 0) {
+      toast.error("Paste a message or attach a QR code to analyze.");
       return;
     }
     setLoading(true);
+    const payload = trimmed || qrs.map((q) => q.payload).join("\n");
     try {
-      const r = await detect({ data: { text: text.trim(), kind } });
+      const r = await detect({
+        data: {
+          text: payload,
+          kind,
+          qr_payloads: qrs.map((q) => q.payload),
+        },
+      });
+
       setResult(r);
       void saveHistoryEntry(r).catch((err) => console.error(err));
       toast[r.prediction === "Spam" ? "error" : "success"](
