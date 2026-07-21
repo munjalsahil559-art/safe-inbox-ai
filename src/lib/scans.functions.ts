@@ -2,8 +2,18 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { DetectionResult } from "./detect.functions";
+import type { UrlFlag } from "./url-reputation";
 
 export type StoredScan = DetectionResult & { id: string };
+
+const UrlFlagSchema = z.object({
+  url: z.string(),
+  domain: z.string(),
+  risk: z.enum(["Safe", "Low", "Medium", "High", "Critical"]),
+  score: z.number(),
+  reasons: z.array(z.string()),
+  source: z.enum(["text", "qr"]),
+});
 
 const ScanInput = z.object({
   kind: z.enum(["sms", "email"]),
@@ -18,6 +28,7 @@ const ScanInput = z.object({
   reasoning: z.string(),
   model: z.string(),
   analyzed_at: z.string(),
+  url_flags: z.array(UrlFlagSchema).default([]),
 });
 
 function rowToScan(r: Record<string, unknown>): StoredScan {
@@ -35,8 +46,10 @@ function rowToScan(r: Record<string, unknown>): StoredScan {
     reasoning: (r.reasoning as string) ?? "",
     model: (r.model as string) ?? "",
     analyzed_at: r.analyzed_at as string,
+    url_flags: (r.url_flags as UrlFlag[] | null) ?? [],
   };
 }
+
 
 export const listScans = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

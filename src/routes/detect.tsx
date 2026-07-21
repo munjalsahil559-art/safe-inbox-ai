@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { detectMessage, type DetectionResult } from "@/lib/detect.functions";
 import { ResultCard } from "@/components/safeinbox/result-card";
 import { saveHistoryEntry } from "@/lib/scan-history";
+import { QrScanner, type QrScanResult } from "@/components/safeinbox/qr-scanner";
+
 
 export const Route = createFileRoute("/detect")({
   head: () => ({
@@ -47,16 +49,27 @@ function DetectPage() {
   const [kind, setKind] = useState<"sms" | "email">("sms");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DetectionResult | null>(null);
+  const [qrs, setQrs] = useState<QrScanResult[]>([]);
   const navigate = useNavigate();
 
+
   async function analyze() {
-    if (!text.trim()) {
-      toast.error("Paste a message to analyze.");
+    const trimmed = text.trim();
+    if (!trimmed && qrs.length === 0) {
+      toast.error("Paste a message or attach a QR code to analyze.");
       return;
     }
     setLoading(true);
+    const payload = trimmed || qrs.map((q) => q.payload).join("\n");
     try {
-      const r = await detect({ data: { text: text.trim(), kind } });
+      const r = await detect({
+        data: {
+          text: payload,
+          kind,
+          qr_payloads: qrs.map((q) => q.payload),
+        },
+      });
+
       setResult(r);
       void saveHistoryEntry(r).catch((err) => console.error(err));
       toast[r.prediction === "Spam" ? "error" : "success"](
@@ -130,7 +143,16 @@ function DetectPage() {
           maxLength={20000}
         />
 
+        <div className="mt-4">
+          <QrScanner
+            results={qrs}
+            onAdd={(r) => setQrs((prev) => [...prev, r])}
+            onRemove={(i) => setQrs((prev) => prev.filter((_, idx) => idx !== i))}
+          />
+        </div>
+
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+
           <div className="flex flex-wrap gap-2">
             <span className="text-xs text-muted-foreground self-center">Try:</span>
             {SAMPLES[kind].map((s) => (
@@ -144,12 +166,15 @@ function DetectPage() {
             ))}
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{text.length} chars</span>
+            <span className="text-xs text-muted-foreground">
+              {text.length} chars{qrs.length ? ` · ${qrs.length} QR` : ""}
+            </span>
             <button
               onClick={analyze}
-              disabled={loading || !text.trim()}
+              disabled={loading || (!text.trim() && qrs.length === 0)}
               className="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed glow transition"
             >
+
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" /> Analyzing…

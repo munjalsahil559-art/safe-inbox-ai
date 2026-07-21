@@ -1,6 +1,8 @@
 import { motion } from "framer-motion";
 import type { DetectionResult } from "@/lib/detect.functions";
 import { AlertTriangle, CheckCircle2, ShieldAlert, Sparkles } from "lucide-react";
+import { UrlFlagsPanel } from "./url-flags-panel";
+
 
 const RISK_COLORS: Record<DetectionResult["risk_level"], string> = {
   Low: "oklch(0.72 0.17 155)",
@@ -208,6 +210,8 @@ export function ResultCard({ result }: { result: DetectionResult }) {
           </div>
         </div>
       )}
+      <UrlFlagsPanel flags={result.url_flags ?? []} />
+
 
       <div className="mt-8">
         <div className="text-xs uppercase tracking-widest text-muted-foreground mb-2">

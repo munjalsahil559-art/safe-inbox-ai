@@ -47,6 +47,7 @@ export async function saveHistoryEntry(result: DetectionResult): Promise<History
         reasoning: result.reasoning,
         model: result.model,
         analyzed_at: result.analyzed_at,
+        url_flags: result.url_flags ?? [],
       },
     });
     window.dispatchEvent(new Event("safeinbox:history"));

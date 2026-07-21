@@ -1,10 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { z } from "zod";
+import { analyzeTextForUrls, analyzeUrl, type UrlFlag } from "./url-reputation";
 
 const InputSchema = z.object({
   text: z.string().min(1).max(20000),
   kind: z.enum(["sms", "email"]).default("sms"),
+  qr_payloads: z.array(z.string().max(4000)).max(8).optional(),
 });
 
 const ResultSchema = z.object({
@@ -23,7 +25,9 @@ export type DetectionResult = z.infer<typeof ResultSchema> & {
   input: string;
   kind: "sms" | "email";
   analyzed_at: string;
+  url_flags: UrlFlag[];
 };
+
 
 const SYSTEM_PROMPT = `You are SafeInbox, an expert spam and phishing detector for SMS and email.
 Analyze the provided message and classify it. Be strict about phishing, scams, OTP theft, lottery/prize fraud, crypto scams, bank impersonation, and suspicious links.
@@ -51,12 +55,38 @@ export const detectMessage = createServerFn({ method: "POST" })
     const modelId = "google/gemini-3.5-flash";
     const model = gateway(modelId);
 
+    // URL + QR heuristic analysis (deterministic, runs regardless of AI result)
+    const textFlags = analyzeTextForUrls(data.text, "text");
+    const qrFlags: UrlFlag[] = [];
+    for (const payload of data.qr_payloads ?? []) {
+      const trimmed = payload.trim();
+      if (!trimmed) continue;
+      // If the QR payload contains a URL, analyse it; otherwise flag it as a raw QR payload.
+      const urls = analyzeTextForUrls(trimmed, "qr");
+      if (urls.length) {
+        qrFlags.push(...urls);
+      } else {
+        qrFlags.push(analyzeUrl(trimmed, "qr"));
+      }
+    }
+    const urlFlags = [...textFlags, ...qrFlags];
+
+    // Feed URL context into the AI so the classification accounts for links
+    const urlContext = urlFlags.length
+      ? `\n\nDetected links (heuristic pre-analysis — factor into your verdict):\n${urlFlags
+          .map(
+            (f) =>
+              `- [${f.source}] ${f.domain} · risk=${f.risk} (${f.score}) — ${f.reasons.join("; ")}`,
+          )
+          .join("\n")}`
+      : "";
+
     try {
       const { output } = await generateText({
         model,
         output: Output.object({ schema: ResultSchema }),
         system: SYSTEM_PROMPT,
-        prompt: `Message type: ${data.kind.toUpperCase()}\n\nMessage:\n"""\n${data.text}\n"""\n\nReturn the JSON analysis.`,
+        prompt: `Message type: ${data.kind.toUpperCase()}\n\nMessage:\n"""\n${data.text}\n"""${urlContext}\n\nReturn the JSON analysis.`,
       });
 
       return {
@@ -69,6 +99,7 @@ export const detectMessage = createServerFn({ method: "POST" })
         input: data.text,
         kind: data.kind,
         analyzed_at: new Date().toISOString(),
+        url_flags: urlFlags,
       };
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {
@@ -77,3 +108,4 @@ export const detectMessage = createServerFn({ method: "POST" })
       throw error;
     }
   });
+

@@ -30,6 +30,7 @@ export type Database = {
           recommendation: string
           risk_level: string
           risk_score: number
+          url_flags: Json
           user_id: string
         }
         Insert: {
@@ -47,6 +48,7 @@ export type Database = {
           recommendation?: string
           risk_level: string
           risk_score: number
+          url_flags?: Json
           user_id: string
         }
         Update: {
@@ -64,6 +66,7 @@ export type Database = {
           recommendation?: string
           risk_level?: string
           risk_score?: number
+          url_flags?: Json
           user_id?: string
         }
         Relationships: []
