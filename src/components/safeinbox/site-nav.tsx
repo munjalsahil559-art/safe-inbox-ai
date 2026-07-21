@@ -1,5 +1,8 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { Shield } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Shield, LogOut, User as UserIcon } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const links = [
   { to: "/", label: "Home" },
@@ -10,6 +13,14 @@ const links = [
 
 export function SiteNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    toast.success("Signed out");
+    navigate({ to: "/" });
+  }
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/60 border-b border-border">
@@ -42,12 +53,28 @@ export function SiteNav() {
           })}
         </nav>
 
-        <Link
-          to="/detect"
-          className="hidden sm:inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90 transition"
-        >
-          Scan a message
-        </Link>
+        {user ? (
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs">
+              <UserIcon className="h-3.5 w-3.5 text-primary" />
+              <span className="max-w-[160px] truncate">{user.email}</span>
+            </div>
+            <button
+              onClick={signOut}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs hover:bg-accent transition"
+              aria-label="Sign out"
+            >
+              <LogOut className="h-3.5 w-3.5" /> Sign out
+            </button>
+          </div>
+        ) : (
+          <Link
+            to="/auth"
+            className="hidden sm:inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90 transition"
+          >
+            Sign in
+          </Link>
+        )}
       </div>
     </header>
   );
