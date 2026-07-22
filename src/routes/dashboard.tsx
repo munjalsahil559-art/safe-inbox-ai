@@ -309,3 +309,78 @@ function DashboardPage() {
     </div>
   );
 }
+
+function AccessPanel() {
+  const items: { icon: React.ComponentType<{ className?: string }>; title: string; body: string; status: "on" | "manual" | "off" }[] = [
+    {
+      icon: MessageSquare,
+      title: "Paste SMS to scan",
+      body: "Paste any suspicious text message on the Detect page for an instant AI verdict.",
+      status: "on",
+    },
+    {
+      icon: Mail,
+      title: "Paste emails to scan",
+      body: "Paste the subject and body of any email — SafeInbox analyzes links, tone and urgency.",
+      status: "on",
+    },
+    {
+      icon: Eye,
+      title: "QR code scam detection",
+      body: "Upload a screenshot of a QR code and SafeInbox extracts and analyzes the payload.",
+      status: "on",
+    },
+    {
+      icon: Lock,
+      title: "Auto-read device SMS / inbox",
+      body: "Browsers can't read your SMS or email inbox directly. Native mobile app or a Gmail OAuth connector is required — coming soon.",
+      status: "off",
+    },
+  ];
+  const badge = {
+    on: { label: "Allowed", color: "var(--safe)" },
+    manual: { label: "Manual", color: "var(--warn)" },
+    off: { label: "Not on web", color: "var(--muted-foreground)" },
+  };
+  return (
+    <div className="mt-6 glass rounded-2xl p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <Lock className="h-4 w-4 text-primary" />
+        <h3 className="font-semibold">Access & permissions</h3>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4 flex items-start gap-1.5">
+        <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+        <span>
+          What SafeInbox can scan on the web. Everything you paste or upload is analyzed by our AI —
+          nothing is read from your device without you sharing it.
+        </span>
+      </p>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {items.map((it) => {
+          const b = badge[it.status];
+          return (
+            <div key={it.title} className="rounded-xl border border-border bg-background/40 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <it.icon className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">{it.title}</span>
+                </div>
+                <span
+                  className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border"
+                  style={{
+                    color: b.color,
+                    borderColor: `color-mix(in oklab, ${b.color} 40%, transparent)`,
+                    background: `color-mix(in oklab, ${b.color} 12%, transparent)`,
+                  }}
+                >
+                  {b.label}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">{it.body}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
