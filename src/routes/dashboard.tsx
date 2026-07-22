@@ -13,7 +13,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { ShieldAlert, ShieldCheck, Gauge, Activity, Mail, MessageSquare, DollarSign, Lock, Info } from "lucide-react";
+import { ShieldAlert, ShieldCheck, Gauge, Activity, Mail, MessageSquare, DollarSign, Lock, Info, Eye } from "lucide-react";
 import { extractMoneyUSD, formatUSD } from "@/lib/money";
 
 export const Route = createFileRoute("/dashboard")({
