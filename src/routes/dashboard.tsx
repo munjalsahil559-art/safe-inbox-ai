@@ -85,7 +85,12 @@ function DashboardPage() {
     ).length;
     const sms = items.filter((i) => i.kind === "sms").length;
     const email = total - sms;
-    return { total, spam, safe, avgRisk, avgConf, todayCount, sms, email };
+    const scamEmails = items.filter((i) => i.kind === "email" && i.prediction === "Spam").length;
+    const scamSms = items.filter((i) => i.kind === "sms" && i.prediction === "Spam").length;
+    const moneyAtRisk = items
+      .filter((i) => i.prediction === "Spam")
+      .reduce((sum, i) => sum + extractMoneyUSD(i.input), 0);
+    return { total, spam, safe, avgRisk, avgConf, todayCount, sms, email, scamEmails, scamSms, moneyAtRisk };
   }, [items]);
 
   const riskBuckets = useMemo(() => {
