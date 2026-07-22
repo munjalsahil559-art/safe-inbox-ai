@@ -168,6 +168,33 @@ function DashboardPage() {
             <Stat icon={Gauge} label="Avg. risk" value={`${stats.avgRisk}`} hint={`avg. confidence ${stats.avgConf}%`} tint="warn" />
           </div>
 
+          <div className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Stat
+              icon={Mail}
+              label="Scam emails"
+              value={stats.scamEmails}
+              hint={`of ${stats.email} email scans`}
+              tint="danger"
+            />
+            <Stat
+              icon={MessageSquare}
+              label="Scam SMS"
+              value={stats.scamSms}
+              hint={`of ${stats.sms} SMS scans`}
+              tint="danger"
+            />
+            <Stat
+              icon={DollarSign}
+              label="Money at risk"
+              value={formatUSD(stats.moneyAtRisk)}
+              hint="sum of amounts in scam messages"
+              tint="warn"
+            />
+          </div>
+
+          <AccessPanel />
+
+
           <div className="mt-6 grid lg:grid-cols-3 gap-4">
             <div className="glass rounded-2xl p-6 lg:col-span-2">
               <div className="flex items-center justify-between mb-4">
