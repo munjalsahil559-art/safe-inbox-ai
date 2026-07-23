@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useScanHistory } from "@/lib/scan-history";
 import { motion } from "framer-motion";
 import {
@@ -13,8 +13,9 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { ShieldAlert, ShieldCheck, Gauge, Activity, Mail, MessageSquare, DollarSign, Lock, Info, Eye } from "lucide-react";
+import { ShieldAlert, ShieldCheck, Gauge, Activity, Mail, MessageSquare, DollarSign, Lock, Info, Eye, Smartphone, UserCircle2, QrCode, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { extractMoneyUSD, formatUSD } from "@/lib/money";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
