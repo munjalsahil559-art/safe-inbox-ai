@@ -1,14 +1,16 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Shield, LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import logoUrl from "@/assets/safeinbox-logo.png";
 
 const links = [
   { to: "/", label: "Home" },
   { to: "/detect", label: "Detect" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/history", label: "History" },
+  { to: "/permissions", label: "Access" },
 ] as const;
 
 export function SiteNav() {
@@ -26,9 +28,13 @@ export function SiteNav() {
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/60 border-b border-border">
       <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="grid place-items-center h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-[oklch(0.7_0.19_190)] glow">
-            <Shield className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img
+            src={logoUrl}
+            alt="SafeInbox"
+            width={36}
+            height={36}
+            className="h-9 w-9 drop-shadow-[0_0_12px_color-mix(in_oklab,var(--primary)_55%,transparent)]"
+          />
           <span className="font-display text-lg font-semibold tracking-tight">
             Safe<span className="gradient-text">Inbox</span>
           </span>
@@ -85,7 +91,7 @@ export function SiteFooter() {
     <footer className="border-t border-border mt-24">
       <div className="mx-auto max-w-7xl px-6 py-10 text-sm text-muted-foreground flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-primary" />
+          <img src={logoUrl} alt="" width={20} height={20} className="h-5 w-5" />
           <span>SafeInbox — AI-powered spam & phishing detection.</span>
         </div>
         <div>© {new Date().getFullYear()} SafeInbox</div>
