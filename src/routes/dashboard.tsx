@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useScanHistory } from "@/lib/scan-history";
 import { motion } from "framer-motion";
 import {
@@ -13,8 +13,9 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { ShieldAlert, ShieldCheck, Gauge, Activity, Mail, MessageSquare, DollarSign, Lock, Info, Eye } from "lucide-react";
+import { ShieldAlert, ShieldCheck, Gauge, Activity, Mail, MessageSquare, DollarSign, Lock, Info, Eye, Smartphone, UserCircle2, QrCode, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { extractMoneyUSD, formatUSD } from "@/lib/money";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -311,72 +312,162 @@ function DashboardPage() {
 }
 
 function AccessPanel() {
-  const items: { icon: React.ComponentType<{ className?: string }>; title: string; body: string; status: "on" | "manual" | "off" }[] = [
+  const { user, loading } = useAuth();
+  const [gmailRequested, setGmailRequested] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    setGmailRequested(localStorage.getItem("safeinbox:gmail-requested") === "1");
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    const onStorage = () =>
+      setGmailRequested(localStorage.getItem("safeinbox:gmail-requested") === "1");
+    window.addEventListener("storage", onStorage);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  const signedIn = !!user && !loading;
+  const gmailStatus: "connected" | "pending" | "off" = gmailRequested
+    ? "pending"
+    : "off";
+
+  type Row = {
+    icon: React.ComponentType<{ className?: string }>;
+    title: string;
+    body: string;
+    status: "on" | "pending" | "off";
+    statusLabel: string;
+    action?: { to: "/detect" | "/permissions" | "/auth"; label: string };
+  };
+
+  const rows: Row[] = [
     {
-      icon: MessageSquare,
-      title: "Paste SMS to scan",
-      body: "Paste any suspicious text message on the Detect page for an instant AI verdict.",
-      status: "on",
+      icon: UserCircle2,
+      title: "Account & cloud sync",
+      body: signedIn
+        ? `Signed in as ${user?.email ?? "your account"}. Scans sync across your devices.`
+        : "Sign in to sync scan history and analytics across devices.",
+      status: signedIn ? "on" : "off",
+      statusLabel: signedIn ? "Signed in" : "Signed out",
+      action: signedIn ? undefined : { to: "/auth", label: "Sign in" },
     },
     {
       icon: Mail,
-      title: "Paste emails to scan",
-      body: "Paste the subject and body of any email — SafeInbox analyzes links, tone and urgency.",
-      status: "on",
+      title: "Gmail inbox",
+      body:
+        gmailStatus === "pending"
+          ? "Gmail connection queued for your account — you'll get an invite when OAuth is live."
+          : "Connect Gmail to auto-scan incoming email for phishing and invoice fraud.",
+      status: gmailStatus === "pending" ? "pending" : "off",
+      statusLabel:
+        gmailStatus === "pending" ? "Requested" : "Not connected",
+      action: { to: "/permissions", label: gmailStatus === "pending" ? "Manage" : "Connect Gmail" },
     },
     {
-      icon: Eye,
-      title: "QR code scam detection",
-      body: "Upload a screenshot of a QR code and SafeInbox extracts and analyzes the payload.",
+      icon: MessageSquare,
+      title: "Paste SMS to scan",
+      body: "Paste any suspicious text message — instant AI verdict, no permissions needed.",
       status: "on",
+      statusLabel: "Available now",
+      action: { to: "/detect", label: "Scan SMS" },
     },
     {
-      icon: Lock,
-      title: "Auto-read device SMS / inbox",
-      body: "Browsers can't read your SMS or email inbox directly. Native mobile app or a Gmail OAuth connector is required — coming soon.",
+      icon: Mail,
+      title: "Paste email to scan",
+      body: "Paste sender, subject and body — SafeInbox flags links, tone and urgency.",
+      status: "on",
+      statusLabel: "Available now",
+      action: { to: "/detect", label: "Scan email" },
+    },
+    {
+      icon: QrCode,
+      title: "QR code detection",
+      body: "Upload a QR screenshot — SafeInbox decodes and analyzes the payload.",
+      status: "on",
+      statusLabel: "Available now",
+      action: { to: "/detect", label: "Scan QR" },
+    },
+    {
+      icon: Smartphone,
+      title: "Auto-read device SMS",
+      body: "Browsers can't read your phone's SMS inbox. Coming to the SafeInbox Android app.",
       status: "off",
+      statusLabel: "Not on web",
     },
   ];
-  const badge = {
-    on: { label: "Allowed", color: "var(--safe)" },
-    manual: { label: "Manual", color: "var(--warn)" },
-    off: { label: "Not on web", color: "var(--muted-foreground)" },
-  };
+
+  const availableCount = rows.filter((r) => r.status === "on").length;
+  const StatusIcon = { on: CheckCircle2, pending: Clock, off: XCircle } as const;
+  const statusColor = {
+    on: "var(--safe)",
+    pending: "var(--warn)",
+    off: "var(--muted-foreground)",
+  } as const;
+
   return (
     <div className="mt-6 glass rounded-2xl p-6">
-      <div className="flex items-center gap-2 mb-1">
-        <Lock className="h-4 w-4 text-primary" />
-        <h3 className="font-semibold">Access & permissions</h3>
+      <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Lock className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold">Permission status</h3>
+          <span
+            className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border font-medium"
+            style={{
+              color: "var(--safe)",
+              borderColor: "color-mix(in oklab, var(--safe) 40%, transparent)",
+              background: "color-mix(in oklab, var(--safe) 12%, transparent)",
+            }}
+          >
+            {availableCount} scans available now
+          </span>
+        </div>
+        <span className="text-[10px] text-muted-foreground">
+          Live · updated {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </span>
       </div>
       <p className="text-xs text-muted-foreground mb-4 flex items-start gap-1.5">
         <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
         <span>
-          What SafeInbox can scan on the web. Everything you paste or upload is analyzed by our AI —
-          nothing is read from your device without you sharing it.
+          What SafeInbox can scan for you right now. Nothing is read from your device without you sharing it.
         </span>
       </p>
-      <div className="grid sm:grid-cols-2 gap-3">
-        {items.map((it) => {
-          const b = badge[it.status];
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {rows.map((r) => {
+          const Icon = StatusIcon[r.status];
+          const color = statusColor[r.status];
           return (
-            <div key={it.title} className="rounded-xl border border-border bg-background/40 p-4">
+            <div
+              key={r.title}
+              className="rounded-xl border border-border bg-background/40 p-4 flex flex-col"
+            >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <it.icon className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">{it.title}</span>
+                  <r.icon className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">{r.title}</span>
                 </div>
                 <span
-                  className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border"
+                  className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border"
                   style={{
-                    color: b.color,
-                    borderColor: `color-mix(in oklab, ${b.color} 40%, transparent)`,
-                    background: `color-mix(in oklab, ${b.color} 12%, transparent)`,
+                    color,
+                    borderColor: `color-mix(in oklab, ${color} 40%, transparent)`,
+                    background: `color-mix(in oklab, ${color} 12%, transparent)`,
                   }}
                 >
-                  {b.label}
+                  <Icon className="h-3 w-3" />
+                  {r.statusLabel}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">{it.body}</p>
+              <p className="text-xs text-muted-foreground leading-relaxed flex-1">{r.body}</p>
+              {r.action && (
+                <Link
+                  to={r.action.to}
+                  className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1 text-xs font-semibold hover:bg-accent transition"
+                >
+                  {r.action.label} →
+                </Link>
+              )}
             </div>
           );
         })}

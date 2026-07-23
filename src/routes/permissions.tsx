@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mail, MessageSquare, Smartphone, ShieldCheck, Info, Check, Lock, ExternalLink, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
@@ -32,6 +32,10 @@ function PermissionsPage() {
   const { user } = useAuth();
   const [gmailRequested, setGmailRequested] = useState(false);
 
+  useEffect(() => {
+    setGmailRequested(localStorage.getItem("safeinbox:gmail-requested") === "1");
+  }, []);
+
   function requestGmail() {
     if (!user) {
       toast.error("Sign in first", {
@@ -40,6 +44,7 @@ function PermissionsPage() {
       return;
     }
     setGmailRequested(true);
+    localStorage.setItem("safeinbox:gmail-requested", "1");
     toast.success("Gmail access requested", {
       description:
         "We've queued a Gmail connection for your account. You'll get an email invite to authorize read-only inbox access.",
