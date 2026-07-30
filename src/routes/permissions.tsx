@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Mail, MessageSquare, Smartphone, ShieldCheck, Info, Check, Lock, ExternalLink, Sparkles } from "lucide-react";
+import { Mail, MessageSquare, Smartphone, ShieldCheck, Info, Check, Lock, ExternalLink, Sparkles, Wrench, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 
@@ -182,6 +182,12 @@ function PermissionsPage() {
   );
 }
 
+type FixStep = {
+  problem: string;
+  fix: string;
+  link?: { label: string; href: string };
+};
+
 function PermissionCard({
   icon: Icon,
   title,
@@ -189,6 +195,7 @@ function PermissionCard({
   status,
   action,
   note,
+  troubleshooting,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
@@ -196,8 +203,10 @@ function PermissionCard({
   status: Status;
   action?: React.ReactNode;
   note?: string;
+  troubleshooting?: FixStep[];
 }) {
   const meta = STATUS_META[status];
+  const [open, setOpen] = useState(false);
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -228,6 +237,57 @@ function PermissionCard({
         </p>
       )}
       {action && <div className="mt-5">{action}</div>}
+
+      {troubleshooting && troubleshooting.length > 0 && (
+        <div className="mt-5 border-t border-border pt-4">
+          <button
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="flex w-full items-center justify-between gap-2 text-xs font-semibold text-foreground/90 hover:text-foreground transition"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Wrench className="h-3.5 w-3.5 text-primary" />
+              Troubleshooting ({troubleshooting.length})
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {open && (
+            <motion.ol
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="mt-3 space-y-3 overflow-hidden"
+            >
+              {troubleshooting.map((step, i) => (
+                <li key={i} className="rounded-xl border border-border bg-card/50 p-3">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-0.5 h-5 w-5 shrink-0 rounded-full bg-accent text-accent-foreground grid place-items-center text-[10px] font-bold">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-foreground">{step.problem}</p>
+                      <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{step.fix}</p>
+                      {step.link && (
+                        <a
+                          href={step.link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                        >
+                          {step.link.label}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </motion.ol>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }
