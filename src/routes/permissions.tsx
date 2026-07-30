@@ -113,6 +113,37 @@ function PermissionsPage() {
               ? "You'll receive an email when Gmail OAuth is live for your account."
               : "Google requires app verification before we can grant inbox access."
           }
+          troubleshooting={[
+            {
+              problem: "\"Connect Gmail\" says you need to sign in",
+              fix: "Gmail access is saved to your SafeInbox account. Create an account or sign in with Google, then return to this page and press Connect Gmail again.",
+              link: { label: "Go to sign in", href: "/auth" },
+            },
+            {
+              problem: "The Google consent window never opens or closes instantly",
+              fix: "Your browser is blocking popups. Allow popups for this site in the address-bar icon, disable strict tracking protection, then retry.",
+              link: {
+                label: "Chrome popup settings help",
+                href: "https://support.google.com/chrome/answer/95472",
+              },
+            },
+            {
+              problem: "Google shows \"app isn't verified\" or blocks the sign-in",
+              fix: "Choose Advanced → Continue to SafeInbox, or use a personal Google account. Workspace accounts often need an admin to approve third-party apps.",
+              link: {
+                label: "Workspace app access help",
+                href: "https://support.google.com/a/answer/7281227",
+              },
+            },
+            {
+              problem: "You connected but no emails are being scanned",
+              fix: "Read-only Gmail scope must be granted. Revoke SafeInbox in your Google account's third-party access list, then reconnect and tick every requested permission.",
+              link: {
+                label: "Manage Google app access",
+                href: "https://myaccount.google.com/connections",
+              },
+            },
+          ]}
         />
 
         <PermissionCard
@@ -151,6 +182,26 @@ function PermissionsPage() {
           body="Browsers can't read your phone's SMS inbox for security reasons. This will land in our upcoming Android app, which uses the SMS_READ permission."
           status="unavailable"
           note="Coming to the SafeInbox Android app."
+          troubleshooting={[
+            {
+              problem: "No \"Allow SMS\" prompt appears on your phone",
+              fix: "Expected on web: mobile browsers have no SMS-read API, so there is nothing to grant. Use the paste-SMS scanner until the Android app ships.",
+              link: { label: "Scan an SMS now", href: "/detect" },
+            },
+            {
+              problem: "You granted SMS permission but nothing imports",
+              fix: "You likely granted it to your default messaging app, not SafeInbox. Check Settings → Apps → SafeInbox → Permissions; if SMS isn't listed, the web app cannot use it.",
+              link: {
+                label: "Android permission settings help",
+                href: "https://support.google.com/android/answer/9431959",
+              },
+            },
+            {
+              problem: "You want protection right now on mobile",
+              fix: "Add SafeInbox to your home screen, then long-press any suspicious message → Copy → paste it into Detect. Results sync to your account across devices.",
+              link: { label: "Open the detector", href: "/detect" },
+            },
+          ]}
         />
       </div>
 
