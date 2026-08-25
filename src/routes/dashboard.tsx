@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import { useScanHistory } from "@/lib/scan-history";
 import { motion } from "framer-motion";
@@ -16,6 +17,7 @@ import {
 import { ShieldAlert, ShieldCheck, Gauge, Activity, Mail, MessageSquare, DollarSign, Lock, Info, Eye, Smartphone, UserCircle2, QrCode, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { extractMoneyUSD, formatUSD } from "@/lib/money";
 import { useAuth } from "@/lib/auth";
+import { getGmailConnectionStatus, type GmailConnectionStatus } from "@/lib/gmail.functions";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -313,25 +315,44 @@ function DashboardPage() {
 
 function AccessPanel() {
   const { user, loading } = useAuth();
-  const [gmailRequested, setGmailRequested] = useState(false);
+  const getStatus = useServerFn(getGmailConnectionStatus);
+  const [gmailStatus, setGmailStatus] = useState<GmailConnectionStatus>({
+    connected: false,
+    setupRequired: false,
+  });
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    setGmailRequested(localStorage.getItem("safeinbox:gmail-requested") === "1");
     const id = setInterval(() => setNow(new Date()), 30_000);
-    const onStorage = () =>
-      setGmailRequested(localStorage.getItem("safeinbox:gmail-requested") === "1");
-    window.addEventListener("storage", onStorage);
+    const refresh = () => {
+      if (!user) {
+        setGmailStatus({ connected: false, setupRequired: false });
+        return;
+      }
+      getStatus()
+        .then(setGmailStatus)
+        .catch((error) =>
+          setGmailStatus({
+            connected: false,
+            setupRequired: false,
+            error: error instanceof Error ? error.message : "Could not check Gmail connection.",
+          }),
+        );
+    };
+    refresh();
+    window.addEventListener("safeinbox:gmail-status", refresh);
     return () => {
       clearInterval(id);
-      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("safeinbox:gmail-status", refresh);
     };
-  }, []);
+  }, [getStatus, user]);
 
   const signedIn = !!user && !loading;
-  const gmailStatus: "connected" | "pending" | "off" = gmailRequested
-    ? "pending"
-    : "off";
+  const gmailState: "connected" | "pending" | "off" = gmailStatus.connected
+    ? "connected"
+    : gmailStatus.setupRequired
+      ? "pending"
+      : "off";
 
   type Row = {
     icon: React.ComponentType<{ className?: string }>;
@@ -357,13 +378,17 @@ function AccessPanel() {
       icon: Mail,
       title: "Gmail inbox",
       body:
-        gmailStatus === "pending"
-          ? "Gmail connection queued for your account — you'll get an invite when OAuth is live."
-          : "Connect Gmail to auto-scan incoming email for phishing and invoice fraud.",
-      status: gmailStatus === "pending" ? "pending" : "off",
+        gmailState === "connected"
+          ? `Connected${gmailStatus.emailAddress ? ` as ${gmailStatus.emailAddress}` : ""}. Read-only Gmail access is active.`
+          : gmailState === "pending"
+            ? "Gmail OAuth setup is needed before inbox scanning can start."
+            : signedIn
+              ? "Connect Gmail with the Google permission popup — no invitation email needed."
+              : "Sign in first, then connect Gmail from Access.",
+      status: gmailState === "connected" ? "on" : gmailState === "pending" ? "pending" : "off",
       statusLabel:
-        gmailStatus === "pending" ? "Requested" : "Not connected",
-      action: { to: "/permissions", label: gmailStatus === "pending" ? "Manage" : "Connect Gmail" },
+        gmailState === "connected" ? "Connected" : gmailState === "pending" ? "Setup needed" : "Not connected",
+      action: { to: signedIn ? "/permissions" : "/auth", label: gmailState === "connected" ? "Manage" : signedIn ? "Connect Gmail" : "Sign in" },
     },
     {
       icon: MessageSquare,
