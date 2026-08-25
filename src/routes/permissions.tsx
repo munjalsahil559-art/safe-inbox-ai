@@ -1,9 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { Mail, MessageSquare, Smartphone, ShieldCheck, Info, Check, Lock, ExternalLink, Sparkles, Wrench, ChevronDown } from "lucide-react";
+import { Mail, MessageSquare, Smartphone, ShieldCheck, Info, Check, Lock, ExternalLink, Sparkles, Wrench, ChevronDown, Loader2, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import {
+  completeGmailConnect,
+  disconnectGmailConnect,
+  getGmailConnectionStatus,
+  startGmailConnect,
+  type GmailConnectionStatus,
+} from "@/lib/gmail.functions";
 
 export const Route = createFileRoute("/permissions")({
   head: () => ({
@@ -28,28 +37,140 @@ const STATUS_META: Record<Status, { label: string; color: string }> = {
   unavailable: { label: "Not on web", color: "var(--muted-foreground)" },
 };
 
+function waitForOAuthCompletion(popup: Window) {
+  return new Promise<string>((resolve, reject) => {
+    let poll: number | undefined;
+    const cleanup = () => {
+      window.removeEventListener("message", onMessage);
+      if (poll !== undefined) window.clearInterval(poll);
+    };
+    const onMessage = (event: MessageEvent) => {
+      const type = event.data?.type;
+      if (
+        event.origin !== window.location.origin ||
+        event.source !== popup ||
+        event.data?.connectorId !== "google_mail" ||
+        (type !== "appUserConnectorOAuthComplete" && type !== "appUserConnectorOAuthFailed")
+      ) {
+        return;
+      }
+      cleanup();
+      if (type === "appUserConnectorOAuthComplete" && typeof event.data?.code === "string") {
+        resolve(event.data.code);
+        return;
+      }
+      popup.close();
+      reject(new Error("Gmail permission was not completed."));
+    };
+    window.addEventListener("message", onMessage);
+    poll = window.setInterval(() => {
+      if (!popup.closed) return;
+      cleanup();
+      reject(new Error("Gmail permission window closed before completion."));
+    }, 500);
+  });
+}
+
 function PermissionsPage() {
   const { user } = useAuth();
-  const [gmailRequested, setGmailRequested] = useState(false);
+  const startConnect = useServerFn(startGmailConnect);
+  const completeConnect = useServerFn(completeGmailConnect);
+  const getStatus = useServerFn(getGmailConnectionStatus);
+  const disconnectConnect = useServerFn(disconnectGmailConnect);
+  const [gmailStatus, setGmailStatus] = useState<GmailConnectionStatus>({
+    connected: false,
+    setupRequired: false,
+  });
+  const [gmailLoading, setGmailLoading] = useState(false);
 
   useEffect(() => {
-    setGmailRequested(localStorage.getItem("safeinbox:gmail-requested") === "1");
-  }, []);
+    localStorage.removeItem("safeinbox:gmail-requested");
+    if (!user) {
+      setGmailStatus({ connected: false, setupRequired: false });
+      return;
+    }
+    let active = true;
+    getStatus()
+      .then((status) => {
+        if (active) setGmailStatus(status);
+      })
+      .catch((error) => {
+        if (active) {
+          setGmailStatus({
+            connected: false,
+            setupRequired: false,
+            error: error instanceof Error ? error.message : "Could not check Gmail connection.",
+          });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [getStatus, user]);
 
-  function requestGmail() {
+  async function requestGmail() {
     if (!user) {
       toast.error("Sign in first", {
-        description: "You need an account to connect Gmail so we can save the connection to you.",
+        description: "You need an account to connect Gmail so the permission is saved to you.",
       });
       return;
     }
-    setGmailRequested(true);
-    localStorage.setItem("safeinbox:gmail-requested", "1");
-    toast.success("Gmail access requested", {
-      description:
-        "We've queued a Gmail connection for your account. You'll get an email invite to authorize read-only inbox access.",
-    });
+    const popup = window.open("", "safeinbox-gmail-oauth", "width=600,height=720");
+    if (!popup) {
+      toast.error("Popup blocked", {
+        description: "Allow popups for this site, then press Connect Gmail again.",
+      });
+      return;
+    }
+
+    setGmailLoading(true);
+    try {
+      const completion = waitForOAuthCompletion(popup);
+      const { authorizationUrl } = await startConnect();
+      popup.location.href = authorizationUrl;
+      const code = await completion;
+      const status = await completeConnect({ data: { code } });
+      setGmailStatus(status);
+      window.dispatchEvent(new Event("safeinbox:gmail-status"));
+      toast.success("Gmail connected", {
+        description: status.emailAddress
+          ? `${status.emailAddress} is ready for read-only scam scanning.`
+          : "Your Gmail permission is saved for read-only scam scanning.",
+      });
+    } catch (error) {
+      popup.close();
+      toast.error("Gmail connection failed", {
+        description: error instanceof Error ? error.message : "Try connecting Gmail again.",
+      });
+    } finally {
+      setGmailLoading(false);
+    }
   }
+
+  async function disconnectGmailAccount() {
+    if (!user) return;
+    setGmailLoading(true);
+    try {
+      await disconnectConnect();
+      setGmailStatus({ connected: false, setupRequired: false });
+      window.dispatchEvent(new Event("safeinbox:gmail-status"));
+      toast.success("Gmail disconnected");
+    } catch (error) {
+      toast.error("Could not disconnect Gmail", {
+        description: error instanceof Error ? error.message : "Try again in a moment.",
+      });
+    } finally {
+      setGmailLoading(false);
+    }
+  }
+
+  const gmailNote = !user
+    ? "Sign in first, then connect your own Gmail account."
+    : gmailStatus.connected
+      ? `Connected${gmailStatus.emailAddress ? ` as ${gmailStatus.emailAddress}` : ""}. Read-only Gmail access is active.`
+      : gmailStatus.setupRequired
+        ? "Gmail OAuth needs workspace setup before users can connect. Add the connector callback URL in Google Cloud."
+        : "Press Connect Gmail to open the Google permission popup now. No email invitation is required.";
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-14">
@@ -90,29 +211,43 @@ function PermissionsPage() {
           icon={Mail}
           title="Gmail inbox"
           body="Connect your Google account and SafeInbox will scan incoming emails for phishing, invoice fraud, and lookalike domains."
-          status={gmailRequested ? "pending" : "pending"}
+          status={gmailStatus.connected ? "granted" : "pending"}
           action={
-            <button
-              onClick={requestGmail}
-              disabled={gmailRequested}
-              className="inline-flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold hover:opacity-90 transition disabled:opacity-60"
-            >
-              {gmailRequested ? (
+            !user ? (
+              <Button asChild className="rounded-full">
+                <Link to="/auth">Sign in to connect</Link>
+              </Button>
+            ) : gmailStatus.connected ? (
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={requestGmail} disabled={gmailLoading} className="rounded-full">
+                  {gmailLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Reconnect
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={disconnectGmailAccount}
+                  disabled={gmailLoading}
+                  className="rounded-full"
+                >
+                  <Unplug className="h-4 w-4" /> Disconnect
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={requestGmail} disabled={gmailLoading} className="rounded-full">
+                {gmailLoading ? (
                 <>
-                  <Check className="h-4 w-4" /> Requested
+                    <Loader2 className="h-4 w-4 animate-spin" /> Opening Google…
                 </>
               ) : (
                 <>
                   Connect Gmail <ExternalLink className="h-3.5 w-3.5" />
                 </>
               )}
-            </button>
+              </Button>
+            )
           }
-          note={
-            gmailRequested
-              ? "You'll receive an email when Gmail OAuth is live for your account."
-              : "Google requires app verification before we can grant inbox access."
-          }
+          note={gmailStatus.error ? `${gmailNote} ${gmailStatus.error}` : gmailNote}
           troubleshooting={[
             {
               problem: "\"Connect Gmail\" says you need to sign in",
@@ -134,6 +269,10 @@ function PermissionsPage() {
                 label: "Workspace app access help",
                 href: "https://support.google.com/a/answer/7281227",
               },
+            },
+            {
+              problem: "You expected an email invitation",
+              fix: "SafeInbox now connects Gmail directly in a Google permission popup. No invitation email is sent; sign in to SafeInbox and press Connect Gmail on this page.",
             },
             {
               problem: "You connected but no emails are being scanned",
